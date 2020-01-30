@@ -1,11 +1,19 @@
 # Code made by Kaba
 from _thread import *
 from network import *
+from os import path
 import pygame as pg
 import socket
 import time
 
 pg.init()
+
+global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG
+WIDTH = 800
+HEIGHT = 600
+TILESIZE = 64
+FPS = 60
+DEBUG = False
 
 # server stuff
 global connected
@@ -18,17 +26,24 @@ clock = pg.time.Clock()
 allSprites = pg.sprite.Group()
 #buttons = pg.sprite.Group() # not useful, cuz buttons are pygame rects
 playerGroup = pg.sprite.Group()
-tiles = pg.sprite.Group()
+tilesGroup = pg.sprite.Group()
 
 Font = pg.font.SysFont("Arial", 25,bold=False,italic=False)
 Font2 = pg.font.SysFont("Arial", 20,bold=False,italic=False)
 Font3 = pg.font.SysFont("Arial", 30,bold=False,italic=False)
 
-WIDTH = 800
-HEIGHT = 600
-
 screen = pg.display.set_mode((WIDTH,HEIGHT))
 pg.display.set_caption("Dungeon explorer")
+
+# texture loading
+player_textures = [] # N, E, S, W <- this order needs to be followed
+tile_textures = []
+img_dir = path.join(path.dirname(__file__),"textures")
+
+for texture in range(4):
+    player_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"player_0{0}.png".format(texture+1))).convert_alpha(),(TILESIZE,TILESIZE)))
+
+tile_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"o.png")),(TILESIZE,TILESIZE)))
 
 class Button:
     def __init__(self, x, y, text_x, text_y, text, color, font, return_value, width=140, height=60,):
@@ -74,8 +89,58 @@ class Input_Cursor:
     def back(self):
         self.x -= self.dist
 
-def multiplayer_game(n, username):
-    print("yeet")
+class Player(pg.sprite.Sprite):
+    def __init__(self, textures, WIDTH, HEIGHT):
+        pg.sprite.Sprite.__init__(self)
+        self.txt = textures
+        self.image = self.txt[0]
+        self.rect = self.image.get_rect()
+        self.rect.centerx, self.rect.centery = WIDTH/2, HEIGHT/2
+
+    def update(self):
+        pass
+
+    def draw_hitbox(self, screen):
+        pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.top), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
+        pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
+
+class Other_Player(pg.sprite.Sprite):
+    def __init__(self):
+        pg.sprite.Sprite.__init__(self)
+
+def multiplayer_game(n, username): # main game function
+    global DEBUG, FPS
+    p = Player(player_textures, WIDTH, HEIGHT)
+    playerGroup.add(p)
+
+    while True: # main game loop
+        mouse_pos = pg.mouse.get_pos()
+        mouse_button = pg.mouse.get_pressed()
+        screen.fill((0,0,0))
+
+        # input 
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                return 1
+
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_F12:
+                    DEBUG = not DEBUG
+
+        # update
+        tilesGroup.update()
+        playerGroup.update()
+        
+        # draw
+        tilesGroup.draw(screen)
+        playerGroup.draw(screen)
+        if DEBUG:
+            p.draw_hitbox(screen)
+        pg.display.flip()
+        clock.tick(FPS)
 
 def connecting(n, test):
     global connected
@@ -137,8 +202,6 @@ def main():
                             pg.quit()
                             return 1
                         if event.type == pg.KEYDOWN:
-                            print(event.key)
-
                             if str(event.key) in "46 48 49 50 51 52 53 54 55 56 57".split(" "):
                                 ip += str(chr(int(event.key)))
                                 i.forward()
