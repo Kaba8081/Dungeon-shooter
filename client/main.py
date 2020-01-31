@@ -40,8 +40,8 @@ player_textures = [] # N, E, S, W <- this order needs to be followed
 tile_textures = []
 img_dir = path.join(path.dirname(__file__),"textures")
 
-for texture in range(4):
-    player_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"player_0{0}.png".format(texture+1))).convert_alpha(),(TILESIZE,TILESIZE)))
+for texture in range(8):
+    player_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"player_debug{0}.png".format(texture+1))).convert_alpha(),(TILESIZE,TILESIZE)))
 
 tile_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"o.png")),(TILESIZE,TILESIZE)))
 
@@ -96,15 +96,41 @@ class Player(pg.sprite.Sprite):
         self.image = self.txt[0]
         self.rect = self.image.get_rect()
         self.rect.centerx, self.rect.centery = WIDTH/2, HEIGHT/2
+        self.facing = 0 # 0 = S; 1 = SW; 2 = W; 3 = NW; 4 = N; 5 = NE; 6 = E; 7 = SE;
 
     def update(self):
-        pass
+        keys = pg.key.get_pressed()
+
+        # animations
+        if keys[pg.K_s]:
+            if keys[pg.K_a]: 
+                self.facing = 1
+            if keys[pg.K_d]:
+                self.facing = 7
+            if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
+                self.facing = 0
+        elif keys[pg.K_w]:
+            if keys[pg.K_a]:
+                self.facing = 3
+            if keys[pg.K_d]:
+                self.facing = 5
+            if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
+                self.facing = 4
+        else:
+            if keys[pg.K_a]:
+                self.facing = 2
+            if keys[pg.K_d]:
+                self.facing = 6
+
+        self.image = self.txt[self.facing]
 
     def draw_hitbox(self, screen):
         pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.top), (self.rect.right, self.rect.top))
         pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
         pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
         pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.top), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.top), (self.rect.left, self.rect.bottom))
 
 class Other_Player(pg.sprite.Sprite):
     def __init__(self):
