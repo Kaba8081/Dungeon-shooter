@@ -8,12 +8,13 @@ import time
 
 pg.init()
 
-global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG
+global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG, OFFSET
 WIDTH = 800
 HEIGHT = 600
 TILESIZE = 64
 FPS = 60
 DEBUG = False
+OFFSET = [0,0]
 
 # server stuff
 global connected
@@ -41,7 +42,7 @@ tile_textures = []
 img_dir = path.join(path.dirname(__file__),"textures")
 
 for texture in range(8):
-    player_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"player_debug{0}.png".format(texture+1))).convert_alpha(),(TILESIZE,TILESIZE)))
+    player_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"player_debug{0}.png".format(texture+1))).convert_alpha(),(int(TILESIZE/2),int(TILESIZE/2))))
 
 tile_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"o.png")),(TILESIZE,TILESIZE)))
 
@@ -97,30 +98,104 @@ class Player(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx, self.rect.centery = WIDTH/2, HEIGHT/2
         self.facing = 0 # 0 = S; 1 = SW; 2 = W; 3 = NW; 4 = N; 5 = NE; 6 = E; 7 = SE;
+        self.speed = 2
 
-    def update(self):
+    def update(self, OFFSET, WIDTH, HEIGHT):
         keys = pg.key.get_pressed()
 
-        # animations
+        # animations and movement
         if keys[pg.K_s]:
-            if keys[pg.K_a]: 
-                self.facing = 1
-            if keys[pg.K_d]:
-                self.facing = 7
             if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
                 self.facing = 0
+
+                if self.rect.bottom + self.speed < (HEIGHT/8)*7:
+                    self.rect.y += self.speed
+
+                    #OFFSET[1] += self.speed
+            elif keys[pg.K_a]: 
+                self.facing = 1
+
+                if self.rect.bottom + self.speed < (HEIGHT/8)*7 and self.rect.x - self.speed > WIDTH/8:
+                    self.rect.y += self.speed
+                    self.rect.x -= self.speed
+
+                    #OFFSET[0] -= self.speed
+                    #OFFSET[1] += self.speed
+                else:
+                    if self.rect.bottom + self.speed < (HEIGHT/8)*7:
+                        self.rect.y += self.speed
+                        #OFFSET[1] += self.speed
+                    if self.rect.left - self.speed > WIDTH/8:
+                        self.rect.x -= self.speed
+                        #OFFSET[0] -= self.speed
+            elif keys[pg.K_d]:
+                self.facing = 7
+
+                if self.rect.bottom + self.speed + 1 < (HEIGHT/8)*7 and self.rect.right < (WIDTH/8)*7:
+                    self.rect.y += self.speed
+                    self.rect.x += self.speed
+
+                    #OFFSET[0] += self.speed
+                    #OFFSET[1] += self.speed
+                else:
+                    if self.rect.bottom + self.speed < (HEIGHT/8)*7:
+                        self.rect.y += self.speed
+                        #OFFSET[1] += self.speed
+                    if self.rect.right + self.speed < (WIDTH/8)*7:
+                        self.rect.x += self.speed
+                        #OFFSET[0] -= self.speed
+
         elif keys[pg.K_w]:
-            if keys[pg.K_a]:
-                self.facing = 3
-            if keys[pg.K_d]:
-                self.facing = 5
             if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
                 self.facing = 4
+
+                if self.rect.top - self.speed > HEIGHT/8:
+                    self.rect.y -= self.speed
+
+                    #OFFSET[1] += self.speed
+            elif keys[pg.K_a]:
+                self.facing = 3
+                
+                if self.rect.top - self.speed - 1 > HEIGHT/8 and self.rect.left - 1 > WIDTH/8:
+                    self.rect.y -= self.speed
+                    self.rect.x -= self.speed
+
+                    #OFFSET[0] -= self.speed
+                    #OFFSET[1] -= self.speed
+                else:
+                    if self.rect.top - self.speed > HEIGHT/8:
+                        self.rect.y -= self.speed
+                        #OFFSET[1] += self.speed
+                    if self.rect.left- self.speed > WIDTH/8:
+                        self.rect.x -= self.speed
+                        #OFFSET[0] -= self.speed
+            elif keys[pg.K_d]:
+                self.facing = 5
+
+                if self.rect.top - self.speed - 1 > HEIGHT/8 and self.rect.right + 1 < (WIDTH/8)*7:
+                    self.rect.y -= self.speed
+                    self.rect.x += self.speed
+
+                    #OFFSET[0] += self.speed
+                    #OFFSET[1] += self.speed
+                else:
+                    if self.rect.top - self.speed > HEIGHT/8:
+                        self.rect.y -= self.speed
+                        #OFFSET[1] += self.speed
+                    if self.rect.right + self.speed < (WIDTH/8)*7:
+                        self.rect.x += self.speed
+                        #OFFSET[0] -= self.speed
         else:
             if keys[pg.K_a]:
                 self.facing = 2
+
+                if self.rect.left - self.speed > WIDTH/8:
+                    self.rect.x -= self.speed
             if keys[pg.K_d]:
                 self.facing = 6
+
+                if self.rect.right + self.speed < (WIDTH/8)*7:
+                    self.rect.x += self.speed
 
         self.image = self.txt[self.facing]
 
@@ -135,6 +210,23 @@ class Player(pg.sprite.Sprite):
 class Other_Player(pg.sprite.Sprite):
     def __init__(self):
         pg.sprite.Sprite.__init__(self)
+
+class Tile(pg.sprite.Sprite):
+    def __init__(self, txt, x, y):
+        pg.sprite.Sprite.__init__(self)
+
+    def update(self, OFFSET):
+        self.rect.x += OFFSET[0] 
+        self.rect.y += OFFSET[1]
+
+def draw_debug(WIDTH, HEIGHT):
+    # lines
+    pg.draw.line(screen, (0,0,255), (WIDTH/8, HEIGHT/8), ((WIDTH/8)*7, HEIGHT/8))
+    pg.draw.line(screen, (0,0,255), (WIDTH/8, HEIGHT/8), (WIDTH/8, (HEIGHT/8)*7))
+    pg.draw.line(screen, (0,0,255), (WIDTH/8, (HEIGHT/8)*7), ((WIDTH/8)*7, (HEIGHT/8)*7))
+    pg.draw.line(screen, (0,0,255), ((WIDTH/8)*7, HEIGHT/8), ((WIDTH/8)*7, (HEIGHT/8)*7))
+
+    # text
 
 def multiplayer_game(n, username): # main game function
     global DEBUG, FPS
@@ -158,13 +250,14 @@ def multiplayer_game(n, username): # main game function
 
         # update
         tilesGroup.update()
-        playerGroup.update()
+        playerGroup.update(OFFSET, WIDTH, HEIGHT)
         
         # draw
         tilesGroup.draw(screen)
         playerGroup.draw(screen)
         if DEBUG:
             p.draw_hitbox(screen)
+            draw_debug(WIDTH, HEIGHT)
         pg.display.flip()
         clock.tick(FPS)
 
