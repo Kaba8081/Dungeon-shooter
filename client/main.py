@@ -1,4 +1,5 @@
 # Code made by Kaba
+from ast import literal_eval
 from _thread import *
 from network import *
 from os import path
@@ -8,13 +9,14 @@ import time
 
 pg.init()
 
-global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG, OFFSET
+global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG, OFFSET, SERVER_OFFSET
 WIDTH = 800
 HEIGHT = 600
 TILESIZE = 64
 FPS = 60
 DEBUG = False
 OFFSET = [0,0]
+SERVER_OFFSET = [0,0]
 
 # server stuff
 global connected
@@ -185,6 +187,7 @@ class Player(pg.sprite.Sprite):
                     if self.rect.right + self.speed < (WIDTH/8)*7:
                         self.rect.x += self.speed
                         #OFFSET[0] -= self.speed
+        
         else:
             if keys[pg.K_a]:
                 self.facing = 2
@@ -208,8 +211,24 @@ class Player(pg.sprite.Sprite):
         pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.top), (self.rect.left, self.rect.bottom))
 
 class Other_Player(pg.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, x, y, txt):
         pg.sprite.Sprite.__init__(self)
+        self.txt = txt
+        self.image = self.txt[0]
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+
+    def update(self, x, y):
+        self.rect.x = x
+        self.rect.y = y
+
+    def draw_hitbox(self, screen):
+        pg.draw.line(screen, (0,0,255), (self.rect.left, self.rect.top), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (0,0,255), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
+        pg.draw.line(screen, (0,0,255), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (0,0,255), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (0,0,255), (self.rect.left, self.rect.top), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (0,0,255), (self.rect.right, self.rect.top), (self.rect.left, self.rect.bottom))
 
 class Tile(pg.sprite.Sprite):
     def __init__(self, txt, x, y):
@@ -221,21 +240,46 @@ class Tile(pg.sprite.Sprite):
 
 def draw_debug(WIDTH, HEIGHT):
     # lines
-    pg.draw.line(screen, (0,0,255), (WIDTH/8, HEIGHT/8), ((WIDTH/8)*7, HEIGHT/8))
-    pg.draw.line(screen, (0,0,255), (WIDTH/8, HEIGHT/8), (WIDTH/8, (HEIGHT/8)*7))
-    pg.draw.line(screen, (0,0,255), (WIDTH/8, (HEIGHT/8)*7), ((WIDTH/8)*7, (HEIGHT/8)*7))
-    pg.draw.line(screen, (0,0,255), ((WIDTH/8)*7, HEIGHT/8), ((WIDTH/8)*7, (HEIGHT/8)*7))
+    pg.draw.line(screen, (0,255,255), (WIDTH/8, HEIGHT/8), ((WIDTH/8)*7, HEIGHT/8))
+    pg.draw.line(screen, (0,255,255), (WIDTH/8, HEIGHT/8), (WIDTH/8, (HEIGHT/8)*7))
+    pg.draw.line(screen, (0,255,255), (WIDTH/8, (HEIGHT/8)*7), ((WIDTH/8)*7, (HEIGHT/8)*7))
+    pg.draw.line(screen, (0,255,255), ((WIDTH/8)*7, HEIGHT/8), ((WIDTH/8)*7, (HEIGHT/8)*7))
 
     # text
 
 def multiplayer_game(n, username): # main game function
-    global DEBUG, FPS
+    global DEBUG, FPS, SERVER_OFFSET, OFFSET
+    # server stuff
+    client_id = None
+    players_list = None
+    current_players = 1
+    positions = None
+    chat = None
+
     p = Player(player_textures, WIDTH, HEIGHT)
     playerGroup.add(p)
+
+    # getting data
+    req1 = literal_eval(n.send("REQUEST_LOAD_CHARACTER-"+username+";0,0")) # [request, player_list, positions, chat]; request = client_id; pos
+    print("req1: {0}".format(req1))
+    client_id = int(req1[0][0].split(";")[0])
+    SERVER_OFFSET[0] = int(req1[0][0].split(";")[1]) - WIDTH/2 + TILESIZE /4
+    SERVER_OFFSET[1] = int(req1[0][0].split(";")[2]) - HEIGHT/2 + TILESIZE /4
+    positions = req1[2]
+    players_list = req1[1]
+
+    if len(players_list) > 1:
+        for pos in positions:
+            if not pos == client_id:
+                p2 = Other_Player(int(pos[0]) + WIDTH/2 + TILESIZE/4, int(pos[1]) + HEIGHT/2+ TILESIZE/4, player_textures)
+                allSprites.add(p2)
+                current_players += 1
 
     while True: # main game loop
         mouse_pos = pg.mouse.get_pos()
         mouse_button = pg.mouse.get_pressed()
+        request = []
+        reply = ""
         screen.fill((0,0,0))
 
         # input 
@@ -252,11 +296,35 @@ def multiplayer_game(n, username): # main game function
         tilesGroup.update()
         playerGroup.update(OFFSET, WIDTH, HEIGHT)
         
+        # server update
+        try:
+            reply = literal_eval(n.send(";"+str(int(p.rect.x + SERVER_OFFSET[0] + OFFSET[0])) + "," + str(int(p.rect.y + SERVER_OFFSET[1] + OFFSET[1]))))
+            print("reply: {0}".format(reply))
+        except Exception as e: 
+            label = Font3.render("Connection Lost!",1,(255,255,255))
+            screen.blit(label, (10,10))
+            print(e)
+
+        if len(req1[1]) > current_players:
+            diff = len(players_list) - len(req1[1])
+            for new_player in range(diff):
+                diff2 = diff - new_player
+                pos = req1[1][len(req1)+diff2]
+                p2 = Other_Player(int(pos[0])  + WIDTH/2 + TILESIZE/4 + OFFSET[0] + SERVER_OFFSET[0], int(pos[1]) + HEIGHT/2 + TILESIZE/4 + OFFSET[1] + SERVER_OFFSET[1], player_textures)
+                allSprites.add(p2)
+                current_players += 1
+
+        for index, player in enumerate(allSprites):
+            player.update(reply[2][index][0] + WIDTH/2 + TILESIZE/4 + OFFSET[0] + SERVER_OFFSET[0], reply[2][index][0] + HEIGHT/2 + TILESIZE/4 + OFFSET[1]+ SERVER_OFFSET[1])
+
         # draw
         tilesGroup.draw(screen)
+        allSprites.draw(screen)
         playerGroup.draw(screen)
         if DEBUG:
             p.draw_hitbox(screen)
+            for sprite in allSprites:
+                sprite.draw_hitbox(screen)
             draw_debug(WIDTH, HEIGHT)
         pg.display.flip()
         clock.tick(FPS)

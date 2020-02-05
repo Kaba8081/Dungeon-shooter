@@ -3,6 +3,7 @@ from _thread import *
 from os import path
 import colorama
 import socket
+import pickle
 
 colorama.init()
 
@@ -17,6 +18,7 @@ def log(message,color):
 port = 8000
 server_ip = str(input("Podaj ip serwera: "))
 player_limit = int(input("Podaj limit graczy: "))
+save_dir = path.join(path.dirname(__file__),"saves")
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -29,7 +31,13 @@ except Exception as e:
 s.listen(player_limit)
 log("Server started waiting for connections...",0)
 
+global player_list, players_num, players_pos
+player_list = []
+players_pos = []
+players_num = 0
+
 def client(conn, addr, player):
+    global player_list, players_num, players_pos
     nick = 'Unnamed'
     conn.send(str.encode('1'))
 
@@ -44,16 +52,43 @@ def client(conn, addr, player):
                 break
             
             if data[0].startswith("REQUEST"): # client requests
+                if data[0].startswith("REQUEST_LOAD_CHARACTER"):
+                    nick = data[0].split("-")[1]
+                    
+                    file_contents = None
+                    if path.isfile(path.join(save_dir, "{0}.sav".format(nick))):
+                        with open(path.join(save_dir, "{0}.sav".format(nick)), "rb") as file:
+                            file_contents = pickle.load(file)
+                    else:
+                        log("There was no save file for {0}, so a new file was created".format(nick),1)
+                        with open(path.join(save_dir, "{0}.sav".format(nick)), "wb") as file:
+                            file_contents = "0,0"
+                            pickle.dump(file_contents,file)
+
+                    file_contents = file_contents.split(",")
+                    players_num += 1
+                    player_list.append(nick)
+                    players_pos.append((int(file_contents[0]),int(file_contents[1])))
+
+                    reply[0].append("{0};{1};{2}".format(player, int(file_contents[0]), int(file_contents[1]))) # client_id; pos
                 log("{0} from {1}".format(data[0], addr),0)
 
-                conn.sendall(str.encode(str(reply)))
+            print("data: {0}".format(data))
+            players_pos[player] = int(data[1].split(",")[0]), int(data[1].split(",")[1])
+
+            reply.append(player_list)
+            reply.append(players_pos)
+
+            conn.sendall(str.encode(str(reply)))
         except Exception as e:
             log("Something went wrong...",2)
             log(e,2)
+            break
 
     conn.close()
+    log("{0}, disconnected".format(addr),0)
 
-currentPlayer = 1
+currentPlayer = 0
 while True:
     conn, addr = s.accept()
     log('connection from: '+ str(addr),0)
