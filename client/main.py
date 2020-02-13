@@ -252,7 +252,7 @@ def multiplayer_game(n, username): # main game function
     # server stuff
     client_id = None
     players_list = None
-    current_players = 1
+    current_players = 0
     positions = None
     chat = None
 
@@ -260,31 +260,32 @@ def multiplayer_game(n, username): # main game function
     playerGroup.add(p)
 
     # getting data
-    req1 = literal_eval(n.send("REQUEST_LOAD_CHARACTER-"+username+";0,0")) # [request, player_list, positions, chat]; request = client_id; pos
+    req1 = literal_eval(n.send("REQUEST_LOAD_CHARACTER-"+username+";0.0,0.0")) # [request, player_list, positions, chat]; request = client_id; pos
     print("req1: {0}".format(req1))
     client_id = int(req1[0][0].split(";")[0])
     SERVER_OFFSET[0] = int(req1[0][0].split(";")[1]) - WIDTH/2 + TILESIZE /4
     SERVER_OFFSET[1] = int(req1[0][0].split(";")[2]) - HEIGHT/2 + TILESIZE /4
     positions = req1[2]
-    players_list = req1[1]
 
-    if len(players_list) > 1:
-        for pos in positions:
-            if not pos == client_id:
-                p2 = Other_Player(int(pos[0]) + WIDTH/2 + TILESIZE/4, int(pos[1]) + HEIGHT/2+ TILESIZE/4, player_textures)
-                allSprites.add(p2)
-                current_players += 1
+    print(client_id)
+    #if len(req1[1]) > 1:
+    #    for pos in positions:
+    #        if not pos == client_id:
+    #            p2 = Other_Player(float(pos[0]) + float(WIDTH/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[0]), float(pos[1]) + float(HEIGHT/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[1]), player_textures)
+    #            allSprites.add(p2)
+    #            current_players += 1
 
     while True: # main game loop
         mouse_pos = pg.mouse.get_pos()
         mouse_button = pg.mouse.get_pressed()
-        request = []
+        request = ""
         reply = ""
         screen.fill((0,0,0))
 
         # input 
         for event in pg.event.get():
             if event.type == pg.QUIT:
+                n.send("REQUEST_LOGOUT;{0},{1}".format(p.rect.x + SERVER_OFFSET[0] + OFFSET[0], p.rect.y + SERVER_OFFSET[1] + OFFSET[1]))
                 pg.quit()
                 return 1
 
@@ -298,24 +299,23 @@ def multiplayer_game(n, username): # main game function
         
         # server update
         try:
-            reply = literal_eval(n.send(";"+str(int(p.rect.x + SERVER_OFFSET[0] + OFFSET[0])) + "," + str(int(p.rect.y + SERVER_OFFSET[1] + OFFSET[1]))))
-            print("reply: {0}".format(reply))
+            reply = literal_eval(n.send("{0};{1},{2}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0], p.rect.y + SERVER_OFFSET[1] + OFFSET[1])))
         except Exception as e: 
             label = Font3.render("Connection Lost!",1,(255,255,255))
             screen.blit(label, (10,10))
             print(e)
 
-        if len(req1[1]) > current_players:
-            diff = len(players_list) - len(req1[1])
-            for new_player in range(diff):
-                diff2 = diff - new_player
-                pos = req1[1][len(req1)+diff2]
-                p2 = Other_Player(int(pos[0])  + WIDTH/2 + TILESIZE/4 + OFFSET[0] + SERVER_OFFSET[0], int(pos[1]) + HEIGHT/2 + TILESIZE/4 + OFFSET[1] + SERVER_OFFSET[1], player_textures)
-                allSprites.add(p2)
-                current_players += 1
+        if len(reply[1]) > current_players:
+            for index, pos in enumerate(reply[1]):
+                if not index <= current_players:
+                    pos = reply[2][current_players]
+                    p2 = Other_Player(float(pos[0]) + float(WIDTH/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[0]), float(pos[1]) + float(HEIGHT/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[1]), player_textures)
+                    allSprites.add(p2)
+                    current_players += 1
 
         for index, player in enumerate(allSprites):
-            player.update(reply[2][index][0] + WIDTH/2 + TILESIZE/4 + OFFSET[0] + SERVER_OFFSET[0], reply[2][index][0] + HEIGHT/2 + TILESIZE/4 + OFFSET[1]+ SERVER_OFFSET[1])
+            print("test1")
+            player.update(float(reply[2][index][0]) + float(WIDTH/2) + float(TILESIZE/4) + float(OFFSET[0]) + float(SERVER_OFFSET[0]),float(reply[2][index][1]) + float(HEIGHT/2) + float(TILESIZE/4) + float(OFFSET[1]) + float(SERVER_OFFSET[1]))
 
         # draw
         tilesGroup.draw(screen)

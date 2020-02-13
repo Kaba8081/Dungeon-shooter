@@ -73,8 +73,7 @@ def client(conn, addr, player):
                     reply[0].append("{0};{1};{2}".format(player, int(file_contents[0]), int(file_contents[1]))) # client_id; pos
                 log("{0} from {1}".format(data[0], addr),0)
 
-            print("data: {0}".format(data))
-            players_pos[player] = int(data[1].split(",")[0]), int(data[1].split(",")[1])
+            players_pos[player] = data[1].split(",")[0], data[1].split(",")[1]
 
             reply.append(player_list)
             reply.append(players_pos)
