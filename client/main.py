@@ -211,12 +211,13 @@ class Player(pg.sprite.Sprite):
         pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.top), (self.rect.left, self.rect.bottom))
 
 class Other_Player(pg.sprite.Sprite):
-    def __init__(self, x, y, txt):
+    def __init__(self, username, x, y, txt):
         pg.sprite.Sprite.__init__(self)
         self.txt = txt
         self.image = self.txt[0]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
+        self.username = username
 
     def update(self, x, y):
         self.rect.x = x
@@ -238,6 +239,18 @@ class Tile(pg.sprite.Sprite):
         self.rect.x += OFFSET[0] 
         self.rect.y += OFFSET[1]
 
+def get_other_pos(value):
+    return (float(value[0]) + float(WIDTH/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[0]), float(value[1]) + float(HEIGHT/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[1]))
+
+def CheckForNewPlayers(request, usernames):
+    for index, player in enumerate(request[1]):
+        if player not in usernames:
+            usernames.append(player)
+            p2_pos = get_other_pos(request[2][index])
+            p2 = Other_Player(player, p2_pos[0], p2_pos[1], player_textures)
+            allSprites.add(p2)
+    return usernames
+
 def draw_debug(WIDTH, HEIGHT):
     # lines
     pg.draw.line(screen, (0,255,255), (WIDTH/8, HEIGHT/8), ((WIDTH/8)*7, HEIGHT/8))
@@ -249,10 +262,11 @@ def draw_debug(WIDTH, HEIGHT):
 
 def multiplayer_game(n, username): # main game function
     global DEBUG, FPS, SERVER_OFFSET, OFFSET
+    pg.display.set_caption("Dungeon explorer - {0}".format(username))
     # server stuff
     client_id = None
     players_list = None
-    current_players = 0
+    current_players = [username]
     positions = None
     chat = None
 
@@ -267,13 +281,7 @@ def multiplayer_game(n, username): # main game function
     SERVER_OFFSET[1] = int(req1[0][0].split(";")[2]) - HEIGHT/2 + TILESIZE /4
     positions = req1[2]
 
-    print(client_id)
-    #if len(req1[1]) > 1:
-    #    for pos in positions:
-    #        if not pos == client_id:
-    #            p2 = Other_Player(float(pos[0]) + float(WIDTH/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[0]), float(pos[1]) + float(HEIGHT/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[1]), player_textures)
-    #            allSprites.add(p2)
-    #            current_players += 1
+    print("client_id: {0}".format(client_id))
 
     while True: # main game loop
         mouse_pos = pg.mouse.get_pos()
@@ -305,17 +313,16 @@ def multiplayer_game(n, username): # main game function
             screen.blit(label, (10,10))
             print(e)
 
-        if len(reply[1]) > current_players:
-            for index, pos in enumerate(reply[1]):
-                if not index <= current_players:
-                    pos = reply[2][current_players]
-                    p2 = Other_Player(float(pos[0]) + float(WIDTH/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[0]), float(pos[1]) + float(HEIGHT/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[1]), player_textures)
-                    allSprites.add(p2)
-                    current_players += 1
+        current_players = CheckForNewPlayers(reply, current_players)
 
-        for index, player in enumerate(allSprites):
-            print("test1")
-            player.update(float(reply[2][index][0]) + float(WIDTH/2) + float(TILESIZE/4) + float(OFFSET[0]) + float(SERVER_OFFSET[0]),float(reply[2][index][1]) + float(HEIGHT/2) + float(TILESIZE/4) + float(OFFSET[1]) + float(SERVER_OFFSET[1]))
+        for player1 in current_players:
+            if not player1 == username:
+                for index, player in enumerate(reply[1]):
+                    if player1 == player:
+                        pos = get_other_pos(reply[2][index])
+                        for player2 in allSprites:
+                            if player2.username == player1:
+                                player2.update(pos[0], pos[1])
 
         # draw
         tilesGroup.draw(screen)
