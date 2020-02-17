@@ -217,6 +217,7 @@ class Other_Player(pg.sprite.Sprite):
         self.image = self.txt[0]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
+        print("x,y = {0},{1}".format(x,y))
         self.username = username
 
     def update(self, x, y):
@@ -240,7 +241,7 @@ class Tile(pg.sprite.Sprite):
         self.rect.y += OFFSET[1]
 
 def get_other_pos(value):
-    return (float(value[0]) + float(WIDTH/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[0]), float(value[1]) + float(HEIGHT/2) + float(TILESIZE/4)+ float(SERVER_OFFSET[1]))
+    return (float(value[0]) + float(WIDTH/2) + float(SERVER_OFFSET[0]), float(value[1]) + float(HEIGHT/2) + float(SERVER_OFFSET[1]))
 
 def CheckForNewPlayers(request, usernames):
     for index, player in enumerate(request[1]):
@@ -277,8 +278,8 @@ def multiplayer_game(n, username): # main game function
     req1 = literal_eval(n.send("REQUEST_LOAD_CHARACTER-"+username+";0.0,0.0")) # [request, player_list, positions, chat]; request = client_id; pos
     print("req1: {0}".format(req1))
     client_id = int(req1[0][0].split(";")[0])
-    SERVER_OFFSET[0] = int(req1[0][0].split(";")[1]) - WIDTH/2 + TILESIZE /4
-    SERVER_OFFSET[1] = int(req1[0][0].split(";")[2]) - HEIGHT/2 + TILESIZE /4
+    SERVER_OFFSET[0] = int(req1[0][0].split(";")[1])# - WIDTH/2
+    SERVER_OFFSET[1] = int(req1[0][0].split(";")[2])# - HEIGHT/2
     positions = req1[2]
 
     print("client_id: {0}".format(client_id))
@@ -293,7 +294,7 @@ def multiplayer_game(n, username): # main game function
         # input 
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                n.send("REQUEST_LOGOUT;{0},{1}".format(p.rect.x + SERVER_OFFSET[0] + OFFSET[0], p.rect.y + SERVER_OFFSET[1] + OFFSET[1]))
+                n.send("REQUEST_LOGOUT;{0},{1}".format(p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2))
                 pg.quit()
                 return 1
 
@@ -307,7 +308,7 @@ def multiplayer_game(n, username): # main game function
         
         # server update
         try:
-            reply = literal_eval(n.send("{0};{1},{2}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0], p.rect.y + SERVER_OFFSET[1] + OFFSET[1])))
+            reply = literal_eval(n.send("{0};{1},{2}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2)))
         except Exception as e: 
             label = Font3.render("Connection Lost!",1,(255,255,255))
             screen.blit(label, (10,10))
