@@ -9,7 +9,8 @@ import time
 
 pg.init()
 
-global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG, OFFSET, SERVER_OFFSET
+global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG, OFFSET, SERVER_OFFSET, LEVEL
+LEVEL = []
 WIDTH = 800
 HEIGHT = 600
 TILESIZE = 64
@@ -267,30 +268,32 @@ def draw_debug(WIDTH, HEIGHT):
 def multiplayer_game(n, username): # main game function
     global DEBUG, FPS, SERVER_OFFSET, OFFSET
     pg.display.set_caption("Dungeon explorer - {0}".format(username))
+    lvl_dir = path.join(path.dirname(__file__),"levels")
     # server stuff
     client_id = None
     players_list = None
     current_players = [username]
     positions = None
     chat = None
+    current_lvl = 0
 
     p = Player(player_textures, WIDTH, HEIGHT)
     playerGroup.add(p)
 
     # getting data
-    req1 = literal_eval(n.send("REQUEST_LOAD_CHARACTER-"+username+";0.0,0.0")) # [request, player_list, positions, chat]; request = client_id; pos
+    test = n.send("REQUEST_LOAD_CHARACTER-{0};{1};{2}".format(username,"0.0,0.0",None))
+    req1 = literal_eval(test) 
+    # [request, player_list, positions, chat]; request = client_id; pos
     client_id = int(req1[0][0].split(";")[0])
     SERVER_OFFSET[0] = int(req1[0][0].split(";")[1])# - WIDTH/2
     SERVER_OFFSET[1] = int(req1[0][0].split(";")[2])# - HEIGHT/2
     positions = req1[2]
 
-    print("client_id: {0}".format(client_id))
-
     while True: # main game loop
         mouse_pos = pg.mouse.get_pos()
         mouse_button = pg.mouse.get_pressed()
         request = ""
-        reply = ""
+        reply = "" #[request, player_list, positions, chat]; request = client_id; pos , server_request
         screen.fill((0,0,0))
 
         # input 
@@ -310,7 +313,21 @@ def multiplayer_game(n, username): # main game function
         
         # server update
         try:
-            reply = literal_eval(n.send("{0};{1},{2}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2)))
+            reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
+            if str(reply[3]) == "REQUEST_DOWNLOAD-MAP":
+                recived_f = path.join(lvl_dir,"level{0}.lvl".format(current_lvl))
+                with open(recived_f, "wb") as file:
+                    data = n.receive()
+                    while True:
+                        data2 = n.receive()
+                        if data2 == b"done":
+                            file.close()
+                            break
+                        file.write(data)
+                        data += data2
+
+                reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
+                current_lvl = int(reply[3])
         except Exception as e: 
             label = Font3.render("Connection Lost!",1,(255,255,255))
             screen.blit(label, (10,10))

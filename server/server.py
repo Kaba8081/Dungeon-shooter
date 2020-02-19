@@ -20,6 +20,7 @@ port = 8000
 server_ip = str(input("Podaj ip serwera: "))
 player_limit = int(input("Podaj limit graczy: "))
 save_dir = path.join(path.dirname(__file__),"saves")
+lvl_dir = path.join(path.dirname(__file__),"levels")
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -37,6 +38,14 @@ player_list = []
 players_pos = []
 players_num = 0
 
+global map, current_lvl
+current_lvl = 1
+map = []
+
+def save_lvl(map, current_lvl):
+    with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)),"wb") as file:
+        pickle.dump(map, file)
+
 def Game_loop(debug1, debug2):
     generator = Cave_Generator(generator_options)
     cave = generator.generate_cave()
@@ -48,22 +57,27 @@ def Game_loop(debug1, debug2):
                 row += "1"
             else:
                 row += "0"
-        print(row)
+    
+    global map, current_lvl
+    map = cave
+    save_lvl(map, current_lvl)
+
+
 def client(conn, addr, player):
-    global player_list, players_num, players_pos
+    global player_list, players_num, players_pos, current_lvl, map
     nick = 'Unnamed'
     conn.send(str.encode('1'))
 
     while True:
         try:
-            data = conn.recv(2048).decode() # request; position
+            data = conn.recv(2048).decode() # request; position; current_lvl
+
             data = data.split(";")
-            reply = [[]]                    # [request, player_list, positions, chat]
+            reply = [[]]                    # [request, player_list, positions, chat, server_request]
 
             if not data:
                 log("{0} disconnected".format(addr),0)
                 break
-            
             if data[0].startswith("REQUEST"): # client requests
                 if data[0].startswith("REQUEST_LOAD_CHARACTER"):
                     nick = data[0].split("-")[1]
@@ -85,13 +99,39 @@ def client(conn, addr, player):
 
                     reply[0].append("{0};{1};{2}".format(player, int(file_contents[0]), int(file_contents[1]))) # client_id; pos
                 log("{0} from {1}".format(data[0], addr),0)
-
             players_pos[player] = data[1].split(",")[0], data[1].split(",")[1]
 
             reply.append(player_list)
             reply.append(players_pos)
-
-            conn.sendall(str.encode(str(reply)))
+            if data[2] != "None":
+                if int(data[2]) != current_lvl:
+                    log("Started uploading map file for {0}".format(addr),0)
+                    reply.append("REQUEST_DOWNLOAD-MAP")
+                    conn.sendall(str.encode(str(reply)))
+                    data = conn.recv(2048).decode()
+                    conn.sendall(str.encode(str(reply)))
+                    f = open(path.join(lvl_dir,'level{0}.lvl'.format(current_lvl)),"rb")
+                    l = f.read(2048)
+                    while l:
+                        print("endless loop?")
+                        data = conn.recv(2048).decode()
+                        log("data: {0}".format(data), 1)
+                        if data == "1":
+                            conn.sendall(l)
+                            l = f.read(2048)
+                        if not l:
+                            break
+                    conn.sendall(b"done")
+                    log("Finished uploading map file for {0}".format(addr),0)
+                    reply[3] = str(current_lvl)
+                    conn.sendall(str.encode(str(reply)))
+                    conn.recv(2048).decode()
+                else:
+                    reply.append("")
+                    conn.sendall(str.encode(str(reply)))
+            else:
+                reply.append("")
+                conn.sendall(str.encode(str(reply)))
         except Exception as e:
             log("Something went wrong...",2)
             log(e,2)

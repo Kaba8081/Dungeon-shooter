@@ -22,5 +22,11 @@ class Network():
         except socket.error as e:
             print(e)
 
+    def receive(self):
+        try:
+            self.client.send(str.encode("1"))
+            return self.client.recv(2048)
+        except socket.error as e:
+            print(e)
     def getPos(self):
         return self.pos
