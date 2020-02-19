@@ -72,10 +72,30 @@ class Cave_Generator:
         
         return newMap
 
+    def replace_values(self, oldMap):
+        newMap = []
+
+        for x in range(self.options["width"]):
+            empty_list = []
+            for y in range(self.options["height"]):
+                empty_list.append(False)
+            newMap.append(empty_list)
+
+        for index_y, y in enumerate(oldMap):
+            for index_x, x in enumerate(oldMap[index_y]):
+                if oldMap[index_x][index_y]:
+                    newMap[index_x][index_y] = 1
+                else:
+                    newMap[index_x][index_y] = 0
+
+        return newMap
+
     def generate_cave(self):
         map = self.create_map()
 
         for i in range(self.options["Number_of_steps"]):
             map = self.do_simulation_step(map)
+
+        map = self.replace_values(map)
 
         return map

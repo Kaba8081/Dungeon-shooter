@@ -3,7 +3,9 @@ from ast import literal_eval
 from _thread import *
 from network import *
 from os import path
+from os import remove
 import pygame as pg
+import pickle
 import socket
 import time
 
@@ -13,7 +15,7 @@ global WIDTH, HEIGHT, TILESIZE, FPS, DEBUG, OFFSET, SERVER_OFFSET, LEVEL
 LEVEL = []
 WIDTH = 800
 HEIGHT = 600
-TILESIZE = 64
+TILESIZE = 48
 FPS = 60
 DEBUG = False
 OFFSET = [0,0]
@@ -113,8 +115,8 @@ class Player(pg.sprite.Sprite):
 
                 if self.rect.bottom + self.speed < (HEIGHT/8)*7:
                     self.rect.y += self.speed
-
-                    #OFFSET[1] += self.speed
+                elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*7:
+                    OFFSET[1] -= self.speed
             elif keys[pg.K_a]: 
                 self.facing = 1
 
@@ -122,15 +124,15 @@ class Player(pg.sprite.Sprite):
                     self.rect.y += self.speed
                     self.rect.x -= self.speed
 
-                    #OFFSET[0] -= self.speed
-                    #OFFSET[1] += self.speed
                 else:
                     if self.rect.bottom + self.speed < (HEIGHT/8)*7:
                         self.rect.y += self.speed
-                        #OFFSET[1] += self.speed
+                    elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*7:
+                        OFFSET[1] -= self.speed
                     if self.rect.left - self.speed > WIDTH/8:
                         self.rect.x -= self.speed
-                        #OFFSET[0] -= self.speed
+                    elif self.rect.left - self.speed - 1 < WIDTH/8:
+                        OFFSET[0] += self.speed
             elif keys[pg.K_d]:
                 self.facing = 7
 
@@ -138,23 +140,23 @@ class Player(pg.sprite.Sprite):
                     self.rect.y += self.speed
                     self.rect.x += self.speed
 
-                    #OFFSET[0] += self.speed
-                    #OFFSET[1] += self.speed
                 else:
                     if self.rect.bottom + self.speed < (HEIGHT/8)*7:
                         self.rect.y += self.speed
-                        #OFFSET[1] += self.speed
-                    if self.rect.right + self.speed < (WIDTH/8)*7:
+                    elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*7:
+                        OFFSET[1] -= self.speed
+                    if self.rect.right + self.speed + 1 < (WIDTH/8)*7:
                         self.rect.x += self.speed
-                        #OFFSET[0] -= self.speed
+                    elif self.rect.right + self.speed + 1> (WIDTH/8)*7:
+                        OFFSET[0] -= self.speed
         elif keys[pg.K_w]:
             if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
                 self.facing = 4
 
                 if self.rect.top - self.speed > HEIGHT/8:
                     self.rect.y -= self.speed
-
-                    #OFFSET[1] += self.speed
+                elif self.rect.top - self.speed - 1 < HEIGHT/8:
+                    OFFSET[1] += self.speed
             elif keys[pg.K_a]:
                 self.facing = 3
                 
@@ -162,15 +164,15 @@ class Player(pg.sprite.Sprite):
                     self.rect.y -= self.speed
                     self.rect.x -= self.speed
 
-                    #OFFSET[0] -= self.speed
-                    #OFFSET[1] -= self.speed
                 else:
                     if self.rect.top - self.speed > HEIGHT/8:
                         self.rect.y -= self.speed
-                        #OFFSET[1] += self.speed
+                    elif self.rect.top - self.speed - 1 < HEIGHT/8:
+                        OFFSET[1] += self.speed
                     if self.rect.left- self.speed > WIDTH/8:
                         self.rect.x -= self.speed
-                        #OFFSET[0] -= self.speed
+                    elif self.rect.left- self.speed - 1< WIDTH/8:
+                        OFFSET[0] += self.speed
             elif keys[pg.K_d]:
                 self.facing = 5
 
@@ -178,26 +180,30 @@ class Player(pg.sprite.Sprite):
                     self.rect.y -= self.speed
                     self.rect.x += self.speed
 
-                    #OFFSET[0] += self.speed
-                    #OFFSET[1] += self.speed
                 else:
                     if self.rect.top - self.speed > HEIGHT/8:
                         self.rect.y -= self.speed
-                        #OFFSET[1] += self.speed
+                    elif self.rect.top - self.speed - 1 < HEIGHT/8:
+                        OFFSET[1] += self.speed
                     if self.rect.right + self.speed < (WIDTH/8)*7:
                         self.rect.x += self.speed
-                        #OFFSET[0] -= self.speed      
+                    elif self.rect.right + self.speed  + 1 > (WIDTH/8)*7:
+                        OFFSET[0] -= self.speed      
         else:
             if keys[pg.K_a]:
                 self.facing = 2
 
                 if self.rect.left - self.speed > WIDTH/8:
                     self.rect.x -= self.speed
+                elif self.rect.left - self.speed - 1< WIDTH/8:
+                    OFFSET[0] += self.speed
             if keys[pg.K_d]:
                 self.facing = 6
 
                 if self.rect.right + self.speed < (WIDTH/8)*7:
                     self.rect.x += self.speed
+                elif self.rect.right + self.speed + 1> (WIDTH/8)*7:
+                    OFFSET[0] -= self.speed
 
         self.image = self.txt[self.facing]
 
@@ -233,8 +239,15 @@ class Other_Player(pg.sprite.Sprite):
 class Tile(pg.sprite.Sprite):
     def __init__(self, txt, x, y):
         pg.sprite.Sprite.__init__(self)
+        self.image = txt
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+        self.x, self.y = x, y
 
     def update(self, OFFSET):
+        self.rect.x = self.x
+        self.rect.y = self.y
+
         self.rect.x += OFFSET[0] 
         self.rect.y += OFFSET[1]
 
@@ -255,6 +268,25 @@ def CheckForNewPlayers(request, usernames):
             p2 = Other_Player(player, p2_pos[0], p2_pos[1], player_textures)
             allSprites.add(p2)
     return usernames
+
+def updateMap(current_lvl):
+    global tilesGroup
+    lvl_dir = path.join(path.dirname(__file__),"levels")
+    tilesGroup = pg.sprite.Group()
+    
+    file_contents = None
+    with open(path.join(lvl_dir, "temp.lvl"), "rb") as file:
+        file_contents = pickle.load(file)
+        with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)), "wb") as file2:
+            pickle.dump(file_contents, file2)
+        
+    remove(path.join(lvl_dir, "temp.lvl"))
+
+    for index_y, y in enumerate(file_contents):
+        for index_x, x in enumerate(y):
+            if file_contents[index_x][index_y] == 1:
+                tile = Tile(tile_textures[0], index_x*TILESIZE, index_y*TILESIZE)
+                tilesGroup.add(tile)
 
 def draw_debug(WIDTH, HEIGHT):
     # lines
@@ -308,19 +340,20 @@ def multiplayer_game(n, username): # main game function
                     DEBUG = not DEBUG
 
         # update
-        tilesGroup.update()
+        tilesGroup.update(OFFSET)
         playerGroup.update(OFFSET, WIDTH, HEIGHT)
         
         # server update
         try:
             reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
             if str(reply[3]) == "REQUEST_DOWNLOAD-MAP":
-                recived_f = path.join(lvl_dir,"level{0}.lvl".format(current_lvl))
+                recived_f = path.join(lvl_dir, "temp.lvl")
                 with open(recived_f, "wb") as file:
                     data = n.receive()
                     while True:
                         data2 = n.receive()
                         if data2 == b"done":
+                            file.write(data)
                             file.close()
                             break
                         file.write(data)
@@ -328,6 +361,7 @@ def multiplayer_game(n, username): # main game function
 
                 reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
                 current_lvl = int(reply[3])
+                updateMap(current_lvl)
         except Exception as e: 
             label = Font3.render("Connection Lost!",1,(255,255,255))
             screen.blit(label, (10,10))

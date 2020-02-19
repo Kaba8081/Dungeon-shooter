@@ -52,11 +52,12 @@ def Game_loop(debug1, debug2):
 
     for index_y, y in enumerate(cave):
         row = ""
-        for index_x, x in enumerate(cave[index_y]):
-            if cave[index_x][index_y]:
+        for index_x, x in enumerate(y):
+            if cave[index_x][index_y] == 1:
                 row += "1"
             else:
                 row += "0"
+        print(row)
     
     global map, current_lvl
     map = cave
@@ -108,14 +109,10 @@ def client(conn, addr, player):
                     log("Started uploading map file for {0}".format(addr),0)
                     reply.append("REQUEST_DOWNLOAD-MAP")
                     conn.sendall(str.encode(str(reply)))
-                    data = conn.recv(2048).decode()
-                    conn.sendall(str.encode(str(reply)))
                     f = open(path.join(lvl_dir,'level{0}.lvl'.format(current_lvl)),"rb")
                     l = f.read(2048)
                     while l:
-                        print("endless loop?")
                         data = conn.recv(2048).decode()
-                        log("data: {0}".format(data), 1)
                         if data == "1":
                             conn.sendall(l)
                             l = f.read(2048)
@@ -123,9 +120,9 @@ def client(conn, addr, player):
                             break
                     conn.sendall(b"done")
                     log("Finished uploading map file for {0}".format(addr),0)
+                    conn.recv(2048).decode()
                     reply[3] = str(current_lvl)
                     conn.sendall(str.encode(str(reply)))
-                    conn.recv(2048).decode()
                 else:
                     reply.append("")
                     conn.sendall(str.encode(str(reply)))
