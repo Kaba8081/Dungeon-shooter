@@ -100,7 +100,7 @@ class Player(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx, self.rect.centery = WIDTH/2, HEIGHT/2
         self.facing = 0 # 0 = S; 1 = SW; 2 = W; 3 = NW; 4 = N; 5 = NE; 6 = E; 7 = SE;
-        self.speed = 2
+        self.speed = 3
 
     def update(self, OFFSET, WIDTH, HEIGHT):
         keys = pg.key.get_pressed()
@@ -146,7 +146,6 @@ class Player(pg.sprite.Sprite):
                     if self.rect.right + self.speed < (WIDTH/8)*7:
                         self.rect.x += self.speed
                         #OFFSET[0] -= self.speed
-
         elif keys[pg.K_w]:
             if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
                 self.facing = 4
@@ -186,8 +185,7 @@ class Player(pg.sprite.Sprite):
                         #OFFSET[1] += self.speed
                     if self.rect.right + self.speed < (WIDTH/8)*7:
                         self.rect.x += self.speed
-                        #OFFSET[0] -= self.speed
-        
+                        #OFFSET[0] -= self.speed      
         else:
             if keys[pg.K_a]:
                 self.facing = 2
@@ -217,7 +215,6 @@ class Other_Player(pg.sprite.Sprite):
         self.image = self.txt[0]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
-        print("x,y = {0},{1}".format(x,y))
         self.username = username
 
     def update(self, x, y):
@@ -239,6 +236,12 @@ class Tile(pg.sprite.Sprite):
     def update(self, OFFSET):
         self.rect.x += OFFSET[0] 
         self.rect.y += OFFSET[1]
+
+    def draw_hitbox(self, screen):
+        pg.draw.line(screen, (255,0,0), (self.rect.left, self.rect.top), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (255,0,0), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
+        pg.draw.line(screen, (255,0,0), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (255,0,0), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
 
 def get_other_pos(value):
     return (float(value[0]) + float(WIDTH/2) + float(SERVER_OFFSET[0]), float(value[1]) + float(HEIGHT/2) + float(SERVER_OFFSET[1]))
@@ -276,7 +279,6 @@ def multiplayer_game(n, username): # main game function
 
     # getting data
     req1 = literal_eval(n.send("REQUEST_LOAD_CHARACTER-"+username+";0.0,0.0")) # [request, player_list, positions, chat]; request = client_id; pos
-    print("req1: {0}".format(req1))
     client_id = int(req1[0][0].split(";")[0])
     SERVER_OFFSET[0] = int(req1[0][0].split(";")[1])# - WIDTH/2
     SERVER_OFFSET[1] = int(req1[0][0].split(";")[2])# - HEIGHT/2

@@ -1,4 +1,5 @@
 from datetime import datetime
+from classes import *
 from _thread import *
 from os import path
 import colorama
@@ -36,6 +37,18 @@ player_list = []
 players_pos = []
 players_num = 0
 
+def Game_loop(debug1, debug2):
+    generator = Cave_Generator(generator_options)
+    cave = generator.generate_cave()
+
+    for index_y, y in enumerate(cave):
+        row = ""
+        for index_x, x in enumerate(cave[index_y]):
+            if cave[index_x][index_y]:
+                row += "1"
+            else:
+                row += "0"
+        print(row)
 def client(conn, addr, player):
     global player_list, players_num, players_pos
     nick = 'Unnamed'
@@ -86,6 +99,8 @@ def client(conn, addr, player):
 
     conn.close()
     log("{0}, disconnected".format(addr),0)
+
+start_new_thread(Game_loop, (None,None))
 
 currentPlayer = 0
 while True:
