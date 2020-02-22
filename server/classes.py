@@ -1,12 +1,12 @@
 import random
 
 generator_options = {
-    "width":25,
-    "height":25,
+    "width":50,
+    "height":50,
     "Birth_chance":60,
     "Death_limit":3,
     "Birth_limit":4,
-    "Number_of_steps":3
+    "Number_of_steps":5
 }
 
 class Cave_Generator:

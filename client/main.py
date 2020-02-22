@@ -105,8 +105,12 @@ class Player(pg.sprite.Sprite):
         self.facing = 0 # 0 = S; 1 = SW; 2 = W; 3 = NW; 4 = N; 5 = NE; 6 = E; 7 = SE;
         self.speed = 3
 
-    def update(self, OFFSET, WIDTH, HEIGHT):
+    def update(self, OFFSET, WIDTH, HEIGHT, tiles, playerGroup):
         keys = pg.key.get_pressed()
+        x_before = self.rect.x
+        y_before = self.rect.y
+        OFFSET_x_before = OFFSET[0]
+        OFFSET_y_before = OFFSET[1]
 
         # animations and movement
         if keys[pg.K_s]:
@@ -205,6 +209,12 @@ class Player(pg.sprite.Sprite):
                 elif self.rect.right + self.speed + 1> (WIDTH/8)*7:
                     OFFSET[0] -= self.speed
 
+        if not len(pg.sprite.groupcollide(playerGroup, tiles, False, False)) == 0:
+            self.rect.x = x_before
+            self.rect.y = y_before
+            OFFSET[0] = OFFSET_x_before
+            OFFSET[1] = OFFSET_y_before
+
         self.image = self.txt[self.facing]
 
     def draw_hitbox(self, screen):
@@ -270,7 +280,7 @@ def CheckForNewPlayers(request, usernames):
     return usernames
 
 def updateMap(current_lvl):
-    global tilesGroup
+    global tilesGroup, LEVEL
     lvl_dir = path.join(path.dirname(__file__),"levels")
     tilesGroup = pg.sprite.Group()
     
@@ -281,12 +291,20 @@ def updateMap(current_lvl):
             pickle.dump(file_contents, file2)
         
     remove(path.join(lvl_dir, "temp.lvl"))
+    
+    LEVEL = []
+    for x in file_contents:
+        empty_list = []
+        for y in x:
+            empty_list.append(0)
+        LEVEL.append(empty_list)
 
     for index_y, y in enumerate(file_contents):
         for index_x, x in enumerate(y):
             if file_contents[index_x][index_y] == 1:
                 tile = Tile(tile_textures[0], index_x*TILESIZE, index_y*TILESIZE)
                 tilesGroup.add(tile)
+            LEVEL[index_x][index_y] = file_contents[index_x][index_y]
 
 def draw_debug(WIDTH, HEIGHT):
     # lines
@@ -298,7 +316,7 @@ def draw_debug(WIDTH, HEIGHT):
     # text
 
 def multiplayer_game(n, username): # main game function
-    global DEBUG, FPS, SERVER_OFFSET, OFFSET
+    global DEBUG, FPS, SERVER_OFFSET, OFFSET, LEVEL
     pg.display.set_caption("Dungeon explorer - {0}".format(username))
     lvl_dir = path.join(path.dirname(__file__),"levels")
     # server stuff
@@ -341,7 +359,7 @@ def multiplayer_game(n, username): # main game function
 
         # update
         tilesGroup.update(OFFSET)
-        playerGroup.update(OFFSET, WIDTH, HEIGHT)
+        playerGroup.update(OFFSET, WIDTH, HEIGHT, tilesGroup, playerGroup)
         
         # server update
         try:
