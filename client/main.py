@@ -285,7 +285,7 @@ def updateMap(current_lvl):
     tilesGroup = pg.sprite.Group()
     
     file_contents = None
-    with open(path.join(lvl_dir, "temp.lvl"), "rb") as file:
+    with open(path.join(lvl_dir, "temp.lvl"), "r") as file:
         file_contents = pickle.load(file)
         with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)), "wb") as file2:
             pickle.dump(file_contents, file2)
@@ -339,6 +339,8 @@ def multiplayer_game(n, username): # main game function
     SERVER_OFFSET[1] = int(req1[0][0].split(";")[2])# - HEIGHT/2
     positions = req1[2]
 
+    print("reee")
+
     while True: # main game loop
         mouse_pos = pg.mouse.get_pos()
         mouse_button = pg.mouse.get_pressed()
@@ -363,9 +365,13 @@ def multiplayer_game(n, username): # main game function
         
         # server update
         try:
+            print("reee2?")
             reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
+            print(reply)
             if str(reply[3]) == "REQUEST_DOWNLOAD-MAP":
+                print("started map download!")
                 recived_f = path.join(lvl_dir, "temp.lvl")
+                reply = literal_eval(n.send("1"))
                 with open(recived_f, "wb") as file:
                     data = n.receive()
                     while True:
@@ -374,10 +380,9 @@ def multiplayer_game(n, username): # main game function
                             file.write(data)
                             file.close()
                             break
-                        file.write(data)
                         data += data2
 
-                reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
+                reply_test = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
                 current_lvl = int(reply[3])
                 updateMap(current_lvl)
         except Exception as e: 

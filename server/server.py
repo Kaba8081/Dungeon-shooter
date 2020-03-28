@@ -107,8 +107,12 @@ def client(conn, addr, player):
             if data[2] != "None":
                 if int(data[2]) != current_lvl:
                     log("Started uploading map file for {0}".format(addr),0)
-                    reply.append("REQUEST_DOWNLOAD-MAP")
-                    conn.sendall(str.encode(str(reply)))
+                    reply2 = reply
+                    log("reply2: {0}".format(reply2),0)
+                    reply2.append("REQUEST_DOWNLOAD-MAP")
+                    log("reply: {0}".format(reply),0)
+                    log("reply2: {0}".format(reply2),0)
+                    conn.sendall(str.encode(str(reply2)))
                     f = open(path.join(lvl_dir,'level{0}.lvl'.format(current_lvl)),"rb")
                     l = f.read(2048)
                     while l:

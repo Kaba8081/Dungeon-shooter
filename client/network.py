@@ -22,6 +22,11 @@ class Network():
         except socket.error as e:
             print(e)
 
+    def send_only(self, data):
+        try:
+            self.client.send(str.encode(data))
+        except socket.error as e:
+            print(e)
     def receive(self):
         try:
             self.client.send(str.encode("1"))
