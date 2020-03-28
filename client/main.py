@@ -371,17 +371,24 @@ def multiplayer_game(n, username): # main game function
             if str(reply[3]) == "REQUEST_DOWNLOAD-MAP":
                 print("started map download!")
                 recived_f = path.join(lvl_dir, "temp.lvl")
-                reply = literal_eval(n.send("1"))
+                print("kupa ")
+                #reply = literal_eval(n.send("1"))
                 with open(recived_f, "wb") as file:
+                    print("kupa ")
                     data = n.receive()
+                    print("data:")
+                    print(data)
                     while True:
                         data2 = n.receive()
                         if data2 == b"done":
                             file.write(data)
                             file.close()
+                            print("data:")
+                            print(data)
                             break
                         data += data2
-
+                        print("data:")
+                        print(data)
                 reply_test = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
                 current_lvl = int(reply[3])
                 updateMap(current_lvl)

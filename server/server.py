@@ -1,6 +1,7 @@
 from datetime import datetime
 from classes import *
 from _thread import *
+from copy import copy
 from os import path
 import colorama
 import socket
@@ -42,9 +43,9 @@ global map, current_lvl
 current_lvl = 1
 map = []
 
-def save_lvl(map, current_lvl):
-    with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)),"wb") as file:
-        pickle.dump(map, file)
+def save_lvl(map1, current_lvl):
+    with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)),"w") as file:
+        file.write(str(map1))
 
 def Game_loop(debug1, debug2):
     generator = Cave_Generator(generator_options)
@@ -59,9 +60,9 @@ def Game_loop(debug1, debug2):
                 row += "0"
         print(row)
     
-    global map, current_lvl
-    map = cave
-    save_lvl(map, current_lvl)
+    global map1, current_lvl
+    map1 = cave
+    save_lvl(map1, current_lvl)
 
 
 def client(conn, addr, player):
@@ -107,7 +108,7 @@ def client(conn, addr, player):
             if data[2] != "None":
                 if int(data[2]) != current_lvl:
                     log("Started uploading map file for {0}".format(addr),0)
-                    reply2 = reply
+                    reply2 = copy(reply)
                     log("reply2: {0}".format(reply2),0)
                     reply2.append("REQUEST_DOWNLOAD-MAP")
                     log("reply: {0}".format(reply),0)
