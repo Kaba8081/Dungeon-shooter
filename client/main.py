@@ -286,19 +286,19 @@ def updateMap(current_lvl):
     
     file_contents = None
     with open(path.join(lvl_dir, "temp.lvl"), "rb") as file:
-        file_contents = pickle.load(file)
+        file_contents = file.read()
         with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)), "wb") as file2:
             pickle.dump(file_contents, file2)
         
     remove(path.join(lvl_dir, "temp.lvl"))
     
+    file_contents = literal_eval(file_contents.decode('utf-8'))
     LEVEL = []
     for x in file_contents:
         empty_list = []
         for y in x:
             empty_list.append(0)
         LEVEL.append(empty_list)
-
     for index_y, y in enumerate(file_contents):
         for index_x, x in enumerate(y):
             if file_contents[index_x][index_y] == 1:
@@ -376,9 +376,8 @@ def multiplayer_game(n, username): # main game function
                             break
                         file.write(data)
                         data += data2
-
-                reply = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
-                current_lvl = int(reply[3])
+                reply_test = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
+                current_lvl = int(list(reply_test)[len(list(reply_test))-1]) 
                 updateMap(current_lvl)
         except Exception as e: 
             label = Font3.render("Connection Lost!",1,(255,255,255))
