@@ -1,6 +1,7 @@
 from datetime import datetime
 from classes import *
 from _thread import *
+from copy import copy
 from os import path
 import colorama
 import socket
@@ -43,8 +44,9 @@ current_lvl = 1
 map = []
 
 def save_lvl(map, current_lvl):
-    with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)),"wb") as file:
-        pickle.dump(map, file)
+    with open(path.join(lvl_dir, "level{0}.lvl".format(current_lvl)),"w") as file:
+        file.write(str(map))
+        print(map)
 
 def Game_loop(debug1, debug2):
     generator = Cave_Generator(generator_options)

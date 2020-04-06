@@ -292,15 +292,18 @@ def updateMap(current_lvl):
         
     remove(path.join(lvl_dir, "temp.lvl"))
     
-    file_contents = literal_eval(file_contents.decode('utf-8'))
+    file_contents = file_contents.decode('utf-8')
+    file_contents = literal_eval(file_contents)
     LEVEL = []
     for x in file_contents:
         empty_list = []
         for y in x:
             empty_list.append(0)
         LEVEL.append(empty_list)
+
     for index_y, y in enumerate(file_contents):
         for index_x, x in enumerate(y):
+            print(x,y)            
             if file_contents[index_x][index_y] == 1:
                 tile = Tile(tile_textures[0], index_x*TILESIZE, index_y*TILESIZE)
                 tilesGroup.add(tile)
@@ -374,7 +377,6 @@ def multiplayer_game(n, username): # main game function
                             file.write(data)
                             file.close()
                             break
-                        file.write(data)
                         data += data2
                 reply_test = literal_eval(n.send("{0};{1},{2};{3}".format(request, p.rect.x + SERVER_OFFSET[0] + OFFSET[0] - WIDTH/2, p.rect.y + SERVER_OFFSET[1] + OFFSET[1] - HEIGHT/2, current_lvl)))
                 current_lvl = int(list(reply_test)[len(list(reply_test))-1]) 
