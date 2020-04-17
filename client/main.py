@@ -209,11 +209,13 @@ class Player(pg.sprite.Sprite):
                 elif self.rect.right + self.speed + 1> (WIDTH/8)*7:
                     OFFSET[0] -= self.speed
 
-        if not len(pg.sprite.groupcollide(playerGroup, tiles, False, False)) == 0:
-            self.rect.x = x_before
-            self.rect.y = y_before
-            OFFSET[0] = OFFSET_x_before
-            OFFSET[1] = OFFSET_y_before
+        #if not len(pg.sprite.groupcollide(playerGroup, tiles, False, False)) == 0:
+        #    self.rect.x = x_before
+        #    self.rect.y = y_before
+        #    OFFSET[0] = OFFSET_x_before
+        #    OFFSET[1] = OFFSET_y_before
+
+        self.check_if_colliding(tiles, x_before, y_before, OFFSET_x_before, OFFSET_y_before)
 
         self.image = self.txt[self.facing]
 
@@ -224,7 +226,17 @@ class Player(pg.sprite.Sprite):
         pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
         pg.draw.line(screen, (0,255,0), (self.rect.left, self.rect.top), (self.rect.right, self.rect.bottom))
         pg.draw.line(screen, (0,255,0), (self.rect.right, self.rect.top), (self.rect.left, self.rect.bottom))
-
+    
+    def check_if_colliding(self, tilesGroup, x_before, y_before, OFFSET_x_before, OFFSET_y_before):
+        for tile in tilesGroup:
+            if tile.rect.top <= self.rect.top and tile.rect.bottom => self.rect.top:
+                if abs(tile.rect.centerx - self.rect.centerx) <= 32:
+                    OFFSET[0] = OFFSET_x_before
+                    self.rect.x = x_before
+            if tile.rect.left < self.rect.right and tile.rect.right > tile.rect.left:
+                if abs(tile.rect.centery - self.rect.centery) <= 32:
+                    OFFSET[1] = OFFSET_y_before
+                    self.rect.y = y_before
 class Other_Player(pg.sprite.Sprite):
     def __init__(self, username, x, y, txt):
         pg.sprite.Sprite.__init__(self)
@@ -302,8 +314,7 @@ def updateMap(current_lvl):
         LEVEL.append(empty_list)
 
     for index_y, y in enumerate(file_contents):
-        for index_x, x in enumerate(y):
-            print(x,y)            
+        for index_x, x in enumerate(y):       
             if file_contents[index_x][index_y] == 1:
                 tile = Tile(tile_textures[0], index_x*TILESIZE, index_y*TILESIZE)
                 tilesGroup.add(tile)
