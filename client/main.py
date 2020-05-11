@@ -1,5 +1,6 @@
 # Code made by Kaba
 from ast import literal_eval
+from random import randint
 from _thread import *
 from network import *
 from os import path
@@ -33,6 +34,7 @@ allSprites = pg.sprite.Group()
 #buttons = pg.sprite.Group() # not useful, cuz buttons are pygame rects
 playerGroup = pg.sprite.Group()
 tilesGroup = pg.sprite.Group()
+bulletsGroup = pg.sprite.Group()
 
 Font = pg.font.SysFont("Arial", 25,bold=False,italic=False)
 Font2 = pg.font.SysFont("Arial", 20,bold=False,italic=False)
@@ -50,6 +52,12 @@ for texture in range(8):
     player_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"player_debug{0}.png".format(texture+1))).convert_alpha(),(int(TILESIZE/2),int(TILESIZE/2))))
 
 tile_textures.append(pg.transform.scale(pg.image.load(path.join(img_dir,"o.png")),(TILESIZE,TILESIZE)))
+
+WeaponTextures = []
+BulletTextures = []
+
+WeaponTextures.append(pg.image.load(path.join(img_dir,"shotgun.png")))
+BulletTextures.append(pg.image.load(path.join(img_dir,"shotgun_bullet.png")))
 
 class Button:
     def __init__(self, x, y, text_x, text_y, text, color, font, return_value, width=140, height=60,):
@@ -96,7 +104,7 @@ class Input_Cursor:
         self.x -= self.dist
 
 class Player(pg.sprite.Sprite):
-    def __init__(self, textures, WIDTH, HEIGHT):
+    def __init__(self, textures, WIDTH, HEIGHT, WeaponTextures, BulletTextures):
         pg.sprite.Sprite.__init__(self)
         self.txt = textures
         self.image = self.txt[0]
@@ -104,116 +112,129 @@ class Player(pg.sprite.Sprite):
         self.rect.centerx, self.rect.centery = WIDTH/2, HEIGHT/2
         self.facing = 0 # 0 = S; 1 = SW; 2 = W; 3 = NW; 4 = N; 5 = NE; 6 = E; 7 = SE;
         self.speed = 3
+    
+        # weapons
+        self.weapon = Weapon(0, WeaponTextures, BulletTextures, self.rect.x, self.rect.y)
+        allSprites.add(self.weapon)
 
     def update(self, OFFSET, WIDTH, HEIGHT, tiles, playerGroup):
         keys = pg.key.get_pressed()
+        mouse_buttons = pg.mouse.get_pressed()
+        mouse_pos = pg.mouse.get_pos()
         x_before = self.rect.x
         y_before = self.rect.y
         OFFSET_x_before = OFFSET[0]
         OFFSET_y_before = OFFSET[1]
+
+        # sprinting logic
+        if keys[pg.K_LSHIFT]:
+            self.speed = 4.5
+        else:
+            self.speed = 3
 
         # animations and movement
         if keys[pg.K_s]:
             if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
                 self.facing = 0
 
-                if self.rect.bottom + self.speed < (HEIGHT/8)*7:
+                if self.rect.bottom + self.speed < (HEIGHT/8)*6:
                     self.rect.y += self.speed
-                elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*7:
+                elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*6:
                     OFFSET[1] -= self.speed
             elif keys[pg.K_a]: 
                 self.facing = 1
 
-                if self.rect.bottom + self.speed < (HEIGHT/8)*7 and self.rect.x - self.speed > WIDTH/8:
+                if self.rect.bottom + self.speed < (HEIGHT/8)*6 and self.rect.x - self.speed > (WIDTH/8)*2:
                     self.rect.y += self.speed
                     self.rect.x -= self.speed
 
                 else:
-                    if self.rect.bottom + self.speed < (HEIGHT/8)*7:
+                    if self.rect.bottom + self.speed < (HEIGHT/8)*6:
                         self.rect.y += self.speed
-                    elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*7:
+                    elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*6:
                         OFFSET[1] -= self.speed
-                    if self.rect.left - self.speed > WIDTH/8:
+                    if self.rect.left - self.speed > (WIDTH/8)*2:
                         self.rect.x -= self.speed
-                    elif self.rect.left - self.speed - 1 < WIDTH/8:
+                    elif self.rect.left - self.speed - 1 < (WIDTH/8)*2:
                         OFFSET[0] += self.speed
             elif keys[pg.K_d]:
                 self.facing = 7
 
-                if self.rect.bottom + self.speed + 1 < (HEIGHT/8)*7 and self.rect.right < (WIDTH/8)*7:
+                if self.rect.bottom + self.speed + 1 < (HEIGHT/8)*6 and self.rect.right < (WIDTH/8)*6:
                     self.rect.y += self.speed
                     self.rect.x += self.speed
 
                 else:
-                    if self.rect.bottom + self.speed < (HEIGHT/8)*7:
+                    if self.rect.bottom + self.speed < (HEIGHT/8)*6:
                         self.rect.y += self.speed
-                    elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*7:
+                    elif self.rect.bottom + self.speed + 1 > (HEIGHT/8)*6:
                         OFFSET[1] -= self.speed
-                    if self.rect.right + self.speed + 1 < (WIDTH/8)*7:
+                    if self.rect.right + self.speed + 1 < (WIDTH/8)*6:
                         self.rect.x += self.speed
-                    elif self.rect.right + self.speed + 1> (WIDTH/8)*7:
+                    elif self.rect.right + self.speed + 1> (WIDTH/8)*6:
                         OFFSET[0] -= self.speed
         elif keys[pg.K_w]:
             if keys[pg.K_a] and keys[pg.K_d] or not keys[pg.K_a] and not keys[pg.K_d]:
                 self.facing = 4
 
-                if self.rect.top - self.speed > HEIGHT/8:
+                if self.rect.top - self.speed > (HEIGHT/8)*2:
                     self.rect.y -= self.speed
-                elif self.rect.top - self.speed - 1 < HEIGHT/8:
+                elif self.rect.top - self.speed - 1 < (HEIGHT/8)*2:
                     OFFSET[1] += self.speed
             elif keys[pg.K_a]:
                 self.facing = 3
                 
-                if self.rect.top - self.speed - 1 > HEIGHT/8 and self.rect.left - 1 > WIDTH/8:
+                if self.rect.top - self.speed - 1 > (HEIGHT/8)*2 and self.rect.left - 1 > (WIDTH/8)*2:
                     self.rect.y -= self.speed
                     self.rect.x -= self.speed
 
                 else:
-                    if self.rect.top - self.speed > HEIGHT/8:
+                    if self.rect.top - self.speed > (HEIGHT/8)*2:
                         self.rect.y -= self.speed
-                    elif self.rect.top - self.speed - 1 < HEIGHT/8:
+                    elif self.rect.top - self.speed - 1 < (HEIGHT/8)*2:
                         OFFSET[1] += self.speed
-                    if self.rect.left- self.speed > WIDTH/8:
+                    if self.rect.left- self.speed > (WIDTH/8)*2:
                         self.rect.x -= self.speed
-                    elif self.rect.left- self.speed - 1< WIDTH/8:
+                    elif self.rect.left- self.speed - 1< (WIDTH/8)*2:
                         OFFSET[0] += self.speed
             elif keys[pg.K_d]:
                 self.facing = 5
 
-                if self.rect.top - self.speed - 1 > HEIGHT/8 and self.rect.right + 1 < (WIDTH/8)*7:
+                if self.rect.top - self.speed - 1 > (HEIGHT/8)*2 and self.rect.right + 1 < (WIDTH/8)*6:
                     self.rect.y -= self.speed
                     self.rect.x += self.speed
 
                 else:
-                    if self.rect.top - self.speed > HEIGHT/8:
+                    if self.rect.top - self.speed > (HEIGHT/8)*2:
                         self.rect.y -= self.speed
-                    elif self.rect.top - self.speed - 1 < HEIGHT/8:
+                    elif self.rect.top - self.speed - 1 < (HEIGHT/8)*2:
                         OFFSET[1] += self.speed
-                    if self.rect.right + self.speed < (WIDTH/8)*7:
+                    if self.rect.right + self.speed < (WIDTH/8)*6:
                         self.rect.x += self.speed
-                    elif self.rect.right + self.speed  + 1 > (WIDTH/8)*7:
+                    elif self.rect.right + self.speed  + 1 > (WIDTH/8)*6:
                         OFFSET[0] -= self.speed      
         else:
             if keys[pg.K_a]:
                 self.facing = 2
 
-                if self.rect.left - self.speed > WIDTH/8:
+                if self.rect.left - self.speed > (WIDTH/8)*2:
                     self.rect.x -= self.speed
-                elif self.rect.left - self.speed - 1< WIDTH/8:
+                elif self.rect.left - self.speed - 1< (WIDTH/8)*2:
                     OFFSET[0] += self.speed
             if keys[pg.K_d]:
                 self.facing = 6
 
-                if self.rect.right + self.speed < (WIDTH/8)*7:
+                if self.rect.right + self.speed < (WIDTH/8)*6:
                     self.rect.x += self.speed
-                elif self.rect.right + self.speed + 1> (WIDTH/8)*7:
+                elif self.rect.right + self.speed + 1> (WIDTH/8)*6:
                     OFFSET[0] -= self.speed
 
-        #if not len(pg.sprite.groupcollide(playerGroup, tiles, False, False)) == 0:
-        #    self.rect.x = x_before
-        #    self.rect.y = y_before
-        #    OFFSET[0] = OFFSET_x_before
-        #    OFFSET[1] = OFFSET_y_before
+        self.weapon.update(self.rect.x, self.rect.y)
+
+        # shooting
+
+        if mouse_buttons[0]:
+            self.weapon.shoot(mouse_pos)
 
         self.check_if_colliding(tiles, x_before, y_before, OFFSET_x_before, OFFSET_y_before)
 
@@ -229,14 +250,15 @@ class Player(pg.sprite.Sprite):
     
     def check_if_colliding(self, tilesGroup, x_before, y_before, OFFSET_x_before, OFFSET_y_before):
         for tile in tilesGroup:
-            if tile.rect.top <= self.rect.top and tile.rect.bottom => self.rect.top:
+            if self.rect.bottom > tile.rect.top and self.rect.top < tile.rect.bottom:
                 if abs(tile.rect.centerx - self.rect.centerx) <= 32:
-                    OFFSET[0] = OFFSET_x_before
-                    self.rect.x = x_before
-            if tile.rect.left < self.rect.right and tile.rect.right > tile.rect.left:
-                if abs(tile.rect.centery - self.rect.centery) <= 32:
                     OFFSET[1] = OFFSET_y_before
                     self.rect.y = y_before
+            if self.rect.right > tile.rect.left and self.rect.left < tile.rect.right:
+                if abs(tile.rect.centery - self.rect.centery) <= 32:
+                    OFFSET[0] = OFFSET_x_before
+                    self.rect.x = x_before
+
 class Other_Player(pg.sprite.Sprite):
     def __init__(self, username, x, y, txt):
         pg.sprite.Sprite.__init__(self)
@@ -278,6 +300,71 @@ class Tile(pg.sprite.Sprite):
         pg.draw.line(screen, (255,0,0), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
         pg.draw.line(screen, (255,0,0), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
         pg.draw.line(screen, (255,0,0), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
+
+class Weapon(pg.sprite.Sprite):
+    def __init__(self, WeaponId, WeaponTextures, BulletTextures, x ,y):
+        pg.sprite.Sprite.__init__(self)
+        self.WeaponId = WeaponId 
+        self.BulletTextures = BulletTextures
+        self.pause = 0
+
+        # Weapon Id's #
+        # 0 - shotgun
+        if WeaponId == 0:
+            self.image = WeaponTextures[WeaponId]
+            self.rect = self.image.get_rect()
+        
+        self.rect.x = x
+        self.rect.y = y
+
+    def update(self, change_x, change_y):
+        self.rect.x = change_x
+        self.rect.y = change_y
+
+        if self.pause > 0:
+            self.pause -= 1
+
+    def shoot(self, mouse_pos):
+        if self.pause == 0:
+            if self.WeaponId == 0:
+                self.pause = 45
+                for i in range(7):
+                    dx = mouse_pos[0] - self.rect.centerx + randint(-16,16)
+                    dy = mouse_pos[1] - self.rect.centery + randint(-16,16)
+                    if abs(dx) > 0 or abs(dy) > 0 :
+                        b = Bullet(self.rect.x, self.rect.y, dx, dy, randint(7,8), 0, self.BulletTextures)
+                        bulletsGroup.add(b)
+
+    def draw_hitbox(self, screen):
+        pg.draw.line(screen, (0, 255,0), (self.rect.left, self.rect.top), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (0, 255,0), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
+        pg.draw.line(screen, (0, 255,0), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (0, 255,0), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
+
+class Bullet(pg.sprite.Sprite):
+    def __init__(self, x, y, dx, dy, speed, WeaponId, textures):
+        pg.sprite.Sprite.__init__(self)
+        self.speed = speed
+        if WeaponId == 0:
+            self.image = textures[WeaponId]
+            self.rect = self.image.get_rect()
+
+        self.rect.x = x
+        self.rect.y = y
+
+        self.pos = pg.math.Vector2(x, y)
+        self.dir = pg.math.Vector2(dx, dy).normalize()
+
+    def update(self):
+        self.pos += self.dir * self.speed
+        self.rect.x = self.pos[0]
+        self.rect.y = self.pos[1]
+
+    def draw_hitbox(self, screen):
+        pg.draw.line(screen, (255,102,102), (self.rect.left, self.rect.top), (self.rect.right, self.rect.top))
+        pg.draw.line(screen, (255,102,102), (self.rect.left, self.rect.top), (self.rect.left, self.rect.bottom))
+        pg.draw.line(screen, (255,102,102), (self.rect.left, self.rect.bottom), (self.rect.right, self.rect.bottom))
+        pg.draw.line(screen, (255,102,102), (self.rect.right, self.rect.bottom), (self.rect.right, self.rect.top))
 
 def get_other_pos(value):
     return (float(value[0]) + float(WIDTH/2) + float(SERVER_OFFSET[0]), float(value[1]) + float(HEIGHT/2) + float(SERVER_OFFSET[1]))
@@ -322,10 +409,10 @@ def updateMap(current_lvl):
 
 def draw_debug(WIDTH, HEIGHT):
     # lines
-    pg.draw.line(screen, (0,255,255), (WIDTH/8, HEIGHT/8), ((WIDTH/8)*7, HEIGHT/8))
-    pg.draw.line(screen, (0,255,255), (WIDTH/8, HEIGHT/8), (WIDTH/8, (HEIGHT/8)*7))
-    pg.draw.line(screen, (0,255,255), (WIDTH/8, (HEIGHT/8)*7), ((WIDTH/8)*7, (HEIGHT/8)*7))
-    pg.draw.line(screen, (0,255,255), ((WIDTH/8)*7, HEIGHT/8), ((WIDTH/8)*7, (HEIGHT/8)*7))
+    pg.draw.line(screen, (0,255,255), ((WIDTH/8)*2, (HEIGHT/8)*2), ((WIDTH/8)*6, (HEIGHT/8)*2))
+    pg.draw.line(screen, (0,255,255), ((WIDTH/8)*2, (HEIGHT/8)*2), ((WIDTH/8)*2, (HEIGHT/8)*6))
+    pg.draw.line(screen, (0,255,255), ((WIDTH/8)*2, (HEIGHT/8)*6), ((WIDTH/8)*6, (HEIGHT/8)*6))
+    pg.draw.line(screen, (0,255,255), ((WIDTH/8)*6, (HEIGHT/8)*2), ((WIDTH/8)*6, (HEIGHT/8)*6))
 
     # text
 
@@ -341,7 +428,7 @@ def multiplayer_game(n, username): # main game function
     chat = None
     current_lvl = 0
 
-    p = Player(player_textures, WIDTH, HEIGHT)
+    p = Player(player_textures, WIDTH, HEIGHT, WeaponTextures, BulletTextures)
     playerGroup.add(p)
 
     # getting data
@@ -355,7 +442,6 @@ def multiplayer_game(n, username): # main game function
 
     while True: # main game loop
         mouse_pos = pg.mouse.get_pos()
-        mouse_button = pg.mouse.get_pressed()
         request = ""
         reply = "" #[request, player_list, positions, chat]; request = client_id; pos , server_request
         screen.fill((0,0,0))
@@ -407,6 +493,9 @@ def multiplayer_game(n, username): # main game function
                         for player2 in allSprites:
                             if player2.username == player1:
                                 player2.update(pos[0], pos[1])
+        
+        for bullet in bulletsGroup:
+            bullet.update()
 
         # draw
         tilesGroup.draw(screen)
@@ -416,7 +505,12 @@ def multiplayer_game(n, username): # main game function
             p.draw_hitbox(screen)
             for sprite in allSprites:
                 sprite.draw_hitbox(screen)
+            for tile in tilesGroup:
+                tile.draw_hitbox(screen)
+            for bullet in bulletsGroup:
+                bullet.draw_hitbox(screen)
             draw_debug(WIDTH, HEIGHT)
+        bulletsGroup.draw(screen)
         pg.display.flip()
         clock.tick(FPS)
 

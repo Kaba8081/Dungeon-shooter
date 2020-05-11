@@ -90,12 +90,23 @@ class Cave_Generator:
 
         return newMap
 
+    def make_borders(self, oldMap):
+        newMap = oldMap
+        for index_x,x in enumerate(oldMap):
+            for index_y,y in enumerate(x):
+                if index_x == 0 or index_y == 0:
+                    newMap[index_x][index_y] = 1
+                elif index_x == self.options["width"]-1 or index_y == self.options["height"]-1:
+                    newMap[index_x][index_y] = 1
+        return newMap
+
     def generate_cave(self):
         map = self.create_map()
 
         for i in range(self.options["Number_of_steps"]):
             map = self.do_simulation_step(map)
 
+        map = self.make_borders(map)
         map = self.replace_values(map)
 
         return map

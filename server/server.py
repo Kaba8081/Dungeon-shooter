@@ -50,15 +50,6 @@ def save_lvl(map, current_lvl):
 def Game_loop(debug1, debug2):
     generator = Cave_Generator(generator_options)
     cave = generator.generate_cave()
-
-    for index_y, y in enumerate(cave):
-        row = ""
-        for index_x, x in enumerate(y):
-            if cave[index_x][index_y] == 1:
-                row += "1"
-            else:
-                row += "0"
-        print(row)
     
     global map, current_lvl
     map = cave
